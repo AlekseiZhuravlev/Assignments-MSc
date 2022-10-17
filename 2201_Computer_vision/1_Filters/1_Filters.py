@@ -16,12 +16,14 @@ def display_image(window_name, img):
     cv.destroyAllWindows()
 
 
-def read_image():
+def read_image(grayscale=False):
     img_path = 'bonn.png'
 
     img = cv.imread(img_path)
-    # display_image('Original Image', img)
-    return img
+    if grayscale:
+        return cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    else:
+        return img
 
 
 # ********************TASK1***********************
@@ -55,8 +57,7 @@ def sum_image(image):
 
 def task1():
     # Your implementation of Task1
-    img = read_image()
-    img_gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    img_gray = read_image(grayscale=True)
 
     int_image = cv.integral(img_gray)
     print("Integral image using opencv:\n", int_image)
@@ -121,8 +122,7 @@ def get_maximum_pixel_difference(img_1, img_2):
 
 def task2():
     # Your implementation of Task2
-    img = read_image()
-    img_gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    img_gray = read_image(grayscale=True)
 
     equalized = cv.equalizeHist(img_gray.copy())
     equalized_own = equalize_hist_image(img_gray.copy())
@@ -158,8 +158,7 @@ def get_kernel_1d(sigma):
 
 def task4():
     # Your implementation of Task4
-    img = read_image()
-    img_gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    img_gray = read_image(grayscale=True)
 
     sigma = 2 * np.sqrt(2)
     img_blur = cv.GaussianBlur(img_gray.copy(), ksize=[0, 0], sigmaX=sigma)
@@ -186,7 +185,20 @@ def task4():
 # ********************TASK5***********************
 def task5():
     # Your implementation of Task5
-    pass
+    img_gray = read_image(grayscale=True)
+    display_image('Original image', img_gray)
+
+    sigma_1 = 2
+    img_blur_1 = cv.GaussianBlur(img_gray.copy(), ksize=[0, 0], sigmaX=sigma_1)
+    img_blur_2 = cv.GaussianBlur(img_blur_1.copy(), ksize=[0, 0], sigmaX=sigma_1)
+
+    sigma_2 = 2 * np.sqrt(2)
+    img_blur_3 = cv.GaussianBlur(img_gray.copy(), ksize=[0, 0], sigmaX=sigma_2)
+
+    display_image('Gaussian blur sigma=2, 2 times', img_blur_2)
+    display_image('Gaussian blur sigma=2*sqrt(2), 1 time', img_blur_3)
+
+    print('Max difference:', get_maximum_pixel_difference(img_blur_2, img_blur_3))
 
 
 # ************************************************
@@ -209,4 +221,4 @@ def task8():
 
 
 if __name__ == '__main__':
-    task4()
+    task5()
