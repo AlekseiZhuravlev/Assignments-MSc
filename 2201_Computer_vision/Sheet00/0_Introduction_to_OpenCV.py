@@ -36,7 +36,7 @@ if __name__ == '__main__':
     display_image('2 - b - Intensity Image', img_gray)
 
     # 2c: for loop to perform the operation
-    img_cpy = np.zeros([img.shape[0], img.shape[1],img.shape[2]])
+    img_cpy = np.zeros([img.shape[0], img.shape[1], img.shape[2]])
     for i in range(len(img[:, 0])):
         for j in range(len(img[0, :])):
             img_cpy[i, j] = [
@@ -55,7 +55,7 @@ if __name__ == '__main__':
     patch_size = 16
     img_patch = img[
                 (img.shape[0] - patch_size) // 2: (img.shape[0] + patch_size) // 2,
-                (img.shape[1]  - patch_size) // 2: (img.shape[1] + patch_size) // 2,
+                (img.shape[1] - patch_size) // 2: (img.shape[1] + patch_size) // 2,
                 :
                 ]
     display_image('2 - e - Center Patch', img_patch)
@@ -67,15 +67,15 @@ if __name__ == '__main__':
     )
     img_cpy = img.copy()
     img_cpy[
-        rand_coord[0]:rand_coord[0] + patch_size,
-        rand_coord[1]:rand_coord[1] + patch_size,
+    rand_coord[0]:rand_coord[0] + patch_size,
+    rand_coord[1]:rand_coord[1] + patch_size,
     ] = img_patch
     display_image('2 - e - Center Patch Placed Random %d, %d' % (rand_coord[0], rand_coord[1]), img_cpy)
 
     # 2f: Draw random rectangles and ellipses
     img_cpy = img.copy()
 
-    #rectangles
+    # rectangles
     for i in range(10):
         vertex_1 = [
             random.randint(0, img.shape[1] - 30),
@@ -88,7 +88,7 @@ if __name__ == '__main__':
         color = random.sample(range(256), 3)
         cv.rectangle(img_cpy, vertex_1, vertex_2, color, thickness=2)
 
-    #ellipses
+    # ellipses
     for i in range(10):
         center = [
             random.randint(20, img.shape[1] - 30),
