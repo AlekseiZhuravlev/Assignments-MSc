@@ -1,3 +1,4 @@
+import itertools
 import os
 import time
 
@@ -52,57 +53,38 @@ def calc_sum_square_difference(image, template):
 #             h[m, n] = up / ((g_norm * h_norm) ** 0.5)
 #     return h
 
-def calc_normalized_cross_correlation(image, template):
+def calc_normalized_cross_correlation(image, template, coordinate_range=None):
     template_mean = cv2.mean(template)[0]
     template_diff = (template.astype(int) - template_mean) / 255
 
     template_diff_norm = np.sum(template_diff ** 2)
 
     h = np.zeros(image.shape)
-    for m in range(image.shape[0] - template.shape[0]):
-        for n in range(image.shape[1] - template.shape[1]):
-            g_norm = 0
-            h_norm = 0
-            up = 0
+    if not coordinate_range:
+        x_range = list(range(0, image.shape[0] - template.shape[0]))
+        y_range = list(range(0, image.shape[1] - template.shape[1]))
+        coordinate_range = list(itertools.product(x_range, y_range))
 
-            image_patch = image[
-                          m: m + template.shape[0],
-                          n: n + template.shape[1]
-                          ].astype(int)
-            image_mean = cv2.mean(image_patch)[0]
-            img_diff = (image_patch - image_mean) / 255
-            img_diff_norm = np.sum(img_diff ** 2)
+    for m, n in coordinate_range:
+        image_patch = image[
+                      m: m + template.shape[0],
+                      n: n + template.shape[1]
+                      ].astype(int)
+        image_mean = cv2.mean(image_patch)[0]
+        img_diff = (image_patch - image_mean) / 255
+        img_diff_norm = np.sum(img_diff ** 2)
 
-            upper_part = np.sum(img_diff * template_diff)
-            lower_part = np.sqrt(img_diff_norm * template_diff_norm)
-            h[m, n] = upper_part / lower_part
+        upper_part = np.sum(img_diff * template_diff)
+        lower_part = np.sqrt(img_diff_norm * template_diff_norm)
+        h[m, n] = upper_part / lower_part
     return h
 
-
-# draw rectanges on the input image in regions where the similarity is larger than SIM_THRESHOLD
-# def draw_rectangles(input_im, similarity_im):
-#     start_rect = False
-#     start = []
-#     end = []
-#     new = input_im.copy()
-#     for x in range(input_im.shape[0] - 1):
-#         for y in range(input_im.shape[1] - 1):
-#             if similarity_im[x, y] > SIM_THRESHOLD and not start_rect:
-#                 start.append((x, y))
-#                 start_rect = True
-#             if similarity_im[x, y] > SIM_THRESHOLD >= similarity_im[x + 1, y] and similarity_im[
-#                 x, y + 1] <= SIM_THRESHOLD and start_rect and x >= start[-1][0] and y >= start[-1][1]:
-#                 end.append((x, y))
-#                 start_rect = False
-#     for i in range(np.shape(start)[0]):
-#         new = cv2.rectangle(new, start[i], end[i], (255, 0, 0), 1)
-#     return new
 
 def draw_rectangles(input_im, similarity_im, template):
     new = input_im.copy()
     for x in range(input_im.shape[0]):
         for y in range(input_im.shape[1]):
-            if similarity_im[x, y] < SIM_THRESHOLD:
+            if similarity_im[x, y] >= SIM_THRESHOLD:
                 cv2.rectangle(new, (y, x), (y + template.shape[1], x + template.shape[0]), (255, 0, 0), 1)
     return new
 
@@ -158,15 +140,14 @@ def blur_im_spatial(image, kernel):
 
 
 def to_shape(a, shape):
-    # TODO problem with padding
-
     y_, x_ = shape
     y, x = a.shape
     y_pad = (y_ - y)
     x_pad = (x_ - x)
-    return np.pad(a, ((0, y_pad),
-                      (0, x_pad)
-                      ))
+    padded = np.pad(a, ((0, y_pad),
+                        (0, x_pad)
+                        ))
+    return padded
 
 
 # blur the image in the frequency domain
@@ -175,13 +156,15 @@ def blur_im_freq(image, kernel):
     kernel_fft = np.fft.fft2(
         to_shape(kernel, image.shape)
     )
+    kernel_fft = np.abs(kernel_fft)
+
     output_freq = np.multiply(img_fft, kernel_fft)
     output_spac = np.fft.ifft2(
         output_freq
     )
     output_real = np.abs(output_spac)
     output_scaled = (output_real / np.max(output_real) * 255).astype(np.uint8)
-    display_image('blurred_fequency', output_scaled)
+    display_image('blurred_frequency', output_scaled)
     return output_scaled
 
 
@@ -244,18 +227,107 @@ def task2(input_im_file, template_im_file):
     display_image('sqd', result_sqd)
     display_image('ncc', result_ncc)
     # draw rectanges at matching regions
-    vis_sqd = draw_rectangles(in_im, result_sqd, template)
-    vis_ncc = draw_rectangles(in_im, 1 - result_ncc, template)
+    vis_sqd = draw_rectangles(in_im, 1 - result_sqd, template)
+    vis_ncc = draw_rectangles(in_im, result_ncc, template)
 
-    display_image('sqd', vis_sqd)
-    display_image('ncc', vis_ncc)
+    display_image('recognized_sqd', vis_sqd)
+    display_image('recognized_ncc', vis_ncc)
+
+
+def blur_and_downsample(img, kernel):
+    blurred_img = cv2.filter2D(img.copy(), -1, kernel)
+    downsized_img = cv2.resize(
+        blurred_img.copy(),
+        dsize=((blurred_img.shape[1] + 1) // 2, (blurred_img.shape[0] + 1) // 2)
+    )
+    return downsized_img
+
+
+def get_mean_pixel_difference(img_1, img_2):
+    diff = np.abs(img_1.astype(int) - img_2.astype(int))
+    return np.sum(diff) / img_1.size
+
+
+def get_region_of_interest_ncc(ncc):
+    reg_of_interest = []
+    for x in range(ncc.shape[0]):
+        for y in range(ncc.shape[1]):
+            if ncc[x, y] >= SIM_THRESHOLD:
+                reg_of_interest.append((x, y))
+
+    # adding 3 adjacent pixels
+    for i in reg_of_interest.copy():
+        reg_of_interest.append((i[0] + 1, i[1] + 1))
+        reg_of_interest.append((i[0], i[1] + 1))
+        reg_of_interest.append((i[0] + 1, i[1]))
+
+    # removing possible duplicates
+    reg_of_interest = set(reg_of_interest)
+
+    return list(reg_of_interest)
 
 
 def task3(input_im_file, template_im_file):
-    pass
-    # TODO: calculate the time needed for template matching with the pyramid
+    img = cv2.imread(os.path.join(DATA_DIR, input_im_file), cv2.IMREAD_GRAYSCALE)
+    templ = cv2.imread(os.path.join(DATA_DIR, template_im_file), cv2.IMREAD_GRAYSCALE)
+    gauss_kernel = get_gaussian_kernel(k_size=5, sigma=1)
 
-    # TODO: show the template matching results using the pyramid
+    # own implementation
+    pyramid_img = [img.copy()]
+    pyramid_templ = [templ.copy()]
+    for i in range(4):
+        downs_img = blur_and_downsample(pyramid_img[-1], gauss_kernel)
+        downs_templ = blur_and_downsample(pyramid_templ[-1], gauss_kernel)
+        pyramid_img.append(downs_img)
+        pyramid_templ.append(downs_templ)
+
+    # built-in
+    pyramid_img_bin = [img.copy()]
+    pyramid_templ_bin = [templ.copy()]
+    for i in range(4):
+        downs_img = cv2.pyrDown(pyramid_img_bin[-1])
+        downs_templ = cv2.pyrDown(pyramid_templ_bin[-1])
+        pyramid_img_bin.append(downs_img)
+        pyramid_templ_bin.append(downs_templ)
+
+    # showing median error
+    for i, (img_own, img_bin) in enumerate(zip(pyramid_img, pyramid_img_bin)):
+        print(
+            f'median error at {i} level: {get_mean_pixel_difference(img_own, img_bin):.2f}'
+        )
+
+    # pattern recognition at different levels of the pyramid
+    for i, (img_pyr, templ_pyr) in enumerate(zip(pyramid_img_bin, pyramid_templ_bin)):
+        start_time = time.time()
+        result_ncc = calc_normalized_cross_correlation(img_pyr, templ_pyr)
+        print(f'ncc at {i} level took {time.time() - start_time:.2f}')
+        display_image('ncc', result_ncc)
+
+        # draw rectanges at matching regions
+        vis_ncc = draw_rectangles(img_pyr, result_ncc, templ_pyr)
+        display_image('recognized_ncc', vis_ncc)
+
+    print('pattern recognition from the bottom of pyramid')
+    # pattern recognition from the bottom of pyramid
+    region_of_interest = None
+    for i, (img_pyr, templ_pyr) in enumerate(zip(pyramid_img_bin[::-1], pyramid_templ_bin[::-1])):
+        start_time = time.time()
+        result_ncc = calc_normalized_cross_correlation(img_pyr, templ_pyr, region_of_interest)
+        print(f'ncc at {i} level took {time.time() - start_time:.3f}')
+        display_image('ncc', result_ncc)
+
+        # draw rectanges at matching regions
+        vis_ncc = draw_rectangles(img_pyr, result_ncc, templ_pyr)
+        display_image('recognized_ncc', vis_ncc)
+
+        # get region of interest
+        region_of_interest = get_region_of_interest_ncc(result_ncc)
+        # rescale coordinates
+        for i in range(len(region_of_interest)):
+            region_of_interest[i] = [
+                region_of_interest[i][0] * 2,
+                region_of_interest[i][1] * 2
+            ]
 
 
 # Image blending
@@ -319,6 +391,8 @@ def task4(input_im_file1, input_im_file2, interest_region_file, num_pyr_levels=5
 def task5(input_im, kernel_size=5, sigma=0.5):
     image = cv2.imread("../data/einstein.jpeg", 0)
 
+    display_image('original', image)
+
     kernel_x, kernel_y = calc_derivative_gaussian_kernel(kernel_size, sigma)
 
     edges_x = cv2.filter2D(image, -1, kernel_x)  # TODO: convolve with kernel_x
@@ -342,15 +416,16 @@ def task5(input_im, kernel_size=5, sigma=0.5):
 
 
 if __name__ == "__main__":
-    # task1('orange.jpeg')
-    # task1('celeb.jpeg')
-    task2('RidingBike.jpeg', 'RidingBikeTemplate.jpeg')
+    task1('orange.jpeg')
+    task1('celeb.jpeg')
+    # task2('RidingBike.jpeg', 'RidingBikeTemplate.jpeg')
     # task3('DogGray.jpeg', 'DogTemplate.jpeg')
     # task4('dog.jpeg', 'moon.jpeg', 'mask.jpeg')
     # just for fun, blend these these images as well
     # for i in [1, 2, 10]:
     #     ind = str(i).zfill(2)
-    #     # blended_im = task4('task4_extra/source_%s.jpg'%ind, 'task4_extra/target_%s.jpg'%ind, 'task4_extra/mask_%s.jpg'%ind)
-    #     # visualise the blended image
+    #     blended_im = task4('task4_extra/source_%s.jpg'%ind, 'task4_extra/target_%s.jpg'%ind, 'task4_extra/mask_%s.jpg'%ind)
+
+    # visualise the blended image
     #
     # task5('einstein.jpeg')
