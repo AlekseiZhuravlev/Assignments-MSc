@@ -35,24 +35,6 @@ def calc_sum_square_difference(image, template):
     return h
 
 
-# implement the normalized cross correlation (NCC) similarity
-# def calc_normalized_cross_correlation(image, template):
-#     image_mean = int(np.mean(image.astype(int)))
-#     template_mean = int(np.mean(template.astype(int)))
-#     h = np.zeros(image.shape)
-#     for m in range(image.shape[0] - template.shape[0]):
-#         for n in range(image.shape[1] - template.shape[1]):
-#             g_norm = 0
-#             h_norm = 0
-#             up = 0
-#             for k in range(template.shape[0]):
-#                 for l in range(template.shape[1]):
-#                     g_norm = g_norm + (int(template[k, l]) - template_mean) ** 2
-#                     h_norm = h_norm + (int(image[m + k, n + l]) - image_mean) ** 2
-#                     up = up + (int(template[k, l]) - template_mean) * (int(image[m + k, n + l]) - image_mean)
-#             h[m, n] = up / ((g_norm * h_norm) ** 0.5)
-#     return h
-
 def calc_normalized_cross_correlation(image, template, coordinate_range=None):
     template_mean = cv2.mean(template)[0]
     template_diff = (template.astype(int) - template_mean) / 255
@@ -89,20 +71,7 @@ def draw_rectangles(input_im, similarity_im, template):
     return new
 
 
-# You can choose to resize the image using the new dimensions or the scaling factor
-def pyramid_down(image, dstSize, scale_factor=None):
-    pass
-
-
-# create a pyramid of the image using the specified pyram function pyram_method.
-# pyram_func can either be cv2.pyrDown or your own implementation
-def create_gaussian_pyramid(image, pyram_func, num_levels):
-    # in a loop, create a pyramid of downsampled blurred images using the Gaussian kernel
-    pass
-
-
 def calc_derivative_gaussian_kernel(size, sigma):
-    # TODO: implement
     der_x = np.zeros((size, size))
     der_y = np.zeros((size, size))
     for i in range(size):
@@ -112,13 +81,6 @@ def calc_derivative_gaussian_kernel(size, sigma):
             der_x[i, j] = gaussian * (-(i - size // 2)) / (sigma ** 2)
             der_y[i, j] = gaussian * (-(j - size // 2)) / (sigma ** 2)
     return der_x, der_y
-
-
-def create_laplacian_pyramid(image, num_levels=5):
-    # create the laplacian pyramid using the gaussian pyramid
-    gaussian_pyramid = create_gaussian_pyramid(image, cv2.pyrdown, num_levels)
-    # complete as described in the exercise sheet
-    pass
 
 
 # Given the final weighted pyramid, sum up the images at each level with the upscaled previous level
@@ -332,10 +294,19 @@ def task3(input_im_file, template_im_file):
 
 # Image blending
 def task4(input_im_file1, input_im_file2, interest_region_file, num_pyr_levels=5):
-    # TODO you can use the steps described in the exercise sheet to help guide you through the solution
     # import images
     im_1 = cv2.imread(os.path.join(DATA_DIR, input_im_file1))
     im_2 = cv2.imread(os.path.join(DATA_DIR, input_im_file2))
+
+    # we use padding to properly position image 1 with respect to 2
+    # it requires manual setup for each image
+    im_1 = cv2.copyMakeBorder(im_1.copy(),
+                              im_2.shape[0] - im_1.shape[0],
+                              0,
+                              0,
+                              im_2.shape[1] - im_1.shape[1],
+                              cv2.BORDER_CONSTANT,
+                              value=[0, 0, 0])
 
     # create Gaussian Pyramids
     GA = [im_1.copy()]
@@ -360,6 +331,14 @@ def task4(input_im_file1, input_im_file2, interest_region_file, num_pyr_levels=5
     # import mask
     mask = cv2.imread(os.path.join(DATA_DIR, interest_region_file), cv2.IMREAD_GRAYSCALE)
 
+    mask = cv2.copyMakeBorder(mask.copy(),
+                              im_2.shape[0] - mask.shape[0],
+                              0,
+                              0,
+                              im_2.shape[1] - mask.shape[1],
+                              cv2.BORDER_CONSTANT,
+                              value=0)
+
     # create Gaussian Pyramid for mask
     GR = [mask.copy()]
     for i in range(num_pyr_levels):
@@ -383,8 +362,7 @@ def task4(input_im_file1, input_im_file2, interest_region_file, num_pyr_levels=5
         LS[i] = cv2.add(LS[i], S_exp)
 
     result = LS[0]
-    cv2.imshow('result', result)
-    cv2.waitKey(0)
+    display_image('result', result)
     return result
 
 
@@ -395,11 +373,11 @@ def task5(input_im, kernel_size=5, sigma=0.5):
 
     kernel_x, kernel_y = calc_derivative_gaussian_kernel(kernel_size, sigma)
 
-    edges_x = cv2.filter2D(image, -1, kernel_x)  # TODO: convolve with kernel_x
-    edges_y = cv2.filter2D(image, -1, kernel_y)  # TODO: convolve with kernel_y
+    edges_x = cv2.filter2D(image, -1, kernel_x)
+    edges_y = cv2.filter2D(image, -1, kernel_y)
 
-    magnitude = np.zeros((edges_x.shape[0], edges_x.shape[1]))  # TODO: compute edge magnitude
-    direction = np.zeros((edges_x.shape[0], edges_x.shape[1]))  # TODO: compute edge direction
+    magnitude = np.zeros((edges_x.shape[0], edges_x.shape[1]))
+    direction = np.zeros((edges_x.shape[0], edges_x.shape[1]))
 
     for i in range(image.shape[0]):
         for j in range(image.shape[1]):
@@ -410,22 +388,21 @@ def task5(input_im, kernel_size=5, sigma=0.5):
                 dy = np.sin(direction[i, j]) * magnitude[i, j] / 100
                 image = cv2.arrowedLine(image, (j, i), (int(np.ceil(j + dy)), int(np.ceil(i + dx))), (0, 255, 0), 1)
 
-    # TODO visualise the results
-    cv2.imshow('edges', image)
-    cv2.waitKey(0)
+    display_image('edges', image)
 
 
 if __name__ == "__main__":
     task1('orange.jpeg')
     task1('celeb.jpeg')
-    # task2('RidingBike.jpeg', 'RidingBikeTemplate.jpeg')
-    # task3('DogGray.jpeg', 'DogTemplate.jpeg')
-    # task4('dog.jpeg', 'moon.jpeg', 'mask.jpeg')
+    task2('RidingBike.jpeg', 'RidingBikeTemplate.jpeg')
+    task3('DogGray.jpeg', 'DogTemplate.jpeg')
+    task4('dog.jpeg', 'moon.jpeg', 'mask.jpeg')
     # just for fun, blend these these images as well
-    # for i in [1, 2, 10]:
-    #     ind = str(i).zfill(2)
-    #     blended_im = task4('task4_extra/source_%s.jpg'%ind, 'task4_extra/target_%s.jpg'%ind, 'task4_extra/mask_%s.jpg'%ind)
+    for i in [1, 2, 10]:
+        ind = str(i).zfill(2)
+        blended_im = task4('task4_extra/source_%s.jpg' % ind, 'task4_extra/target_%s.jpg' % ind,
+                           'task4_extra/mask_%s.jpg' % ind)
 
     # visualise the blended image
-    #
-    # task5('einstein.jpeg')
+
+    task5('einstein.jpeg')
