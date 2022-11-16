@@ -194,17 +194,17 @@ def myKmeans_intensity(data, k):
     :param k: number of clusters
     :return: centers and list of indices that store the cluster index for each data point
     """
+    data = data.astype(int)
 
     cluster_map = np.zeros((
         data.shape[0], data.shape[1]
     ), dtype=int)
 
     # initialize centers using some random points from data
-    x_rand = np.random.choice(range(data.shape[0]), k)
-    y_rand = np.random.choice(range(data.shape[1]), k)
+    x_rand = np.random.choice(range(data.shape[0] - 1), k)
+    y_rand = np.random.choice(range(data.shape[1] - 1), k)
 
-    # TODO generalize
-    centers = [data[i[0], i[1]] for i in zip(x_rand, y_rand)]
+    centers = [int(data[i[0], i[1]]) for i in zip(x_rand, y_rand)]
 
     convergence = False
     iterationNo = 0
@@ -224,39 +224,24 @@ def myKmeans_intensity(data, k):
                 new_centers_counts[nearest_center] += 1
 
         for i in range(k):
-            new_centers[i] /= new_centers_counts[i]
+            if new_centers_counts[i]:
+                new_centers[i] /= new_centers_counts[i]
+            else:
+                print('one cluster got zero counts')
+                # new_centers[i] = 0
 
         center_change = np.sqrt(np.sum((centers - new_centers) ** 2))
 
-        if center_change < 1:
+        if center_change < 2 * k:
             convergence = True
         else:
             centers = new_centers.copy()
 
         iterationNo += 1
-        print('iterationNo = ', iterationNo)
+        print('iterationNo = ', iterationNo, f'center change = {center_change}')
 
-    return cluster_map
-
-
-def task_3_a():
-    # print("Task 3 (a) ...")
-    # img = cv.imread('../images/flower.png', cv.IMREAD_GRAYSCALE)
-    #
-    # for k in [2, 4, 6]:
-    #     cluster_map = myKmeans_intensity(img, k)
-    #     cluster_map *= 255//k
-    #
-    #     display_image('clusters', cluster_map.astype(np.uint8))
-
-    print("Task 3 (b) ...")
-    img = cv.imread('../images/flower.png')
-
-    for k in [2, 4, 6]:
-        cluster_map = myKmeans_color(img, k)
-        cluster_map *= 255 // k
-
-        display_image('clusters', cluster_map.astype(np.uint8))
+    cluster_map *= 255 // k
+    return centers, cluster_map
 
 
 def myKmeans_color(data, k):
@@ -266,6 +251,7 @@ def myKmeans_color(data, k):
     :param k: number of clusters
     :return: centers and list of indices that store the cluster index for each data point
     """
+    data = data.astype(int)
 
     cluster_map = np.zeros((
         data.shape[0], data.shape[1]
@@ -275,7 +261,6 @@ def myKmeans_color(data, k):
     x_rand = np.random.choice(range(data.shape[0]), k)
     y_rand = np.random.choice(range(data.shape[1]), k)
 
-    # TODO generalize
     centers = [data[i[0], i[1]].astype(int) for i in zip(x_rand, y_rand)]
 
     convergence = False
@@ -283,8 +268,6 @@ def myKmeans_color(data, k):
     while not convergence:
         new_centers = [np.zeros(3) for _ in range(k)]
         new_centers_counts = np.zeros(k)
-
-        print(centers)
 
         for x in range(data.shape[0]):
             for y in range(data.shape[1]):
@@ -297,41 +280,145 @@ def myKmeans_color(data, k):
                 new_centers[nearest_center] += data[x, y].astype(int)
                 new_centers_counts[nearest_center] += 1
 
+        # for i in range(k):
+        #     new_centers[i] /= new_centers_counts[i]
+        #
         for i in range(k):
-            new_centers[i] /= new_centers_counts[i]
+            if new_centers_counts[i]:
+                new_centers[i] /= new_centers_counts[i]
+            else:
+                print('one cluster got zero counts')
 
         center_change = [np.zeros(3) for _ in range(k)]
 
-        # print(centers[0] - new_centers[0])
-        # print(new_centers[0])
-        # print(center_change[0])
-
-        # print(centers[k] - new_centers[k])
-
         for i in range(k):
-            print(i)
             center_change[i] = np.sqrt(np.sum((centers[i] - new_centers[i]) ** 2))
 
-        if np.sqrt(np.sum(center_change) ** 2) < 1:
+        if np.sqrt(np.sum(center_change) ** 2) < 8 * k:
             convergence = True
         else:
             centers = new_centers.copy()
 
         iterationNo += 1
-        print('iterationNo = ', iterationNo)
+        print('iterationNo = ', iterationNo, f'center change = {center_change}')
 
-    return cluster_map
+    cluster_map *= 255 // k
+    return centers, cluster_map
 
 
-# TODO return center VALUES
-def task_3_c():
-    print("Task 3 (c) ...")
+def myKmeans_intensity_distance(data, k):
+    """
+    Your implementation of k-means algorithm
+    :param data: list of data points to cluster
+    :param k: number of clusters
+    :return: centers and list of indices that store the cluster index for each data point
+    """
+    data = data.astype(int)
+
+    cluster_map = np.zeros((
+        data.shape[0], data.shape[1]
+    ), dtype=int)
+
+    # initialize centers using some random points from data
+    x_rand = np.random.choice(range(data.shape[0] - 1), k)
+    y_rand = np.random.choice(range(data.shape[1] - 1), k)
+
+    # [intensity, [x,y]]
+    centers = []
+    for i in zip(x_rand, y_rand):
+        centers.append([
+            data[i[0], i[1]], i
+        ])
+
+    convergence = False
+    iterationNo = 0
+    while not convergence:
+        new_centers = [[0, [0, 0]] for _ in range(k)]
+        new_centers_counts = np.zeros(k)
+
+        for x in range(data.shape[0]):
+            for y in range(data.shape[1]):
+                distances = []
+                for center in centers:
+                    # intensity distance has weight 2
+                    # x and y distances have weight 1
+
+                    distances.append(
+                        4 * ((data[x, y] - center[0]) / 255) ** 2 + \
+                        ((x - center[1][0]) / data.shape[0]) ** 2 + \
+                        ((y - center[1][1]) / data.shape[1]) ** 2
+                    )
+
+                nearest_center = np.argmin(distances)
+
+                cluster_map[x, y] = nearest_center
+
+                # print(centers)
+                # print(distances)
+                # print(new_centers, nearest_center)
+
+                new_centers[nearest_center][0] += data[x, y]
+                new_centers[nearest_center][1][0] += x
+                new_centers[nearest_center][1][1] += y
+
+                new_centers_counts[nearest_center] += 1
+
+        for i in range(k):
+            if new_centers_counts[i]:
+                new_centers[i][0] /= new_centers_counts[i]
+                new_centers[i][1][0] /= new_centers_counts[i]
+                new_centers[i][1][1] /= new_centers_counts[i]
+            else:
+                print('one cluster got zero counts')
+
+        center_change = 0
+
+        for i in range(k):
+            center_change += np.sqrt(
+                ((new_centers[i][0] - centers[i][0]) / 255) ** 2 + \
+                ((new_centers[i][1][0] - centers[i][1][0]) / data.shape[0]) ** 2 + \
+                ((new_centers[i][1][1] - centers[i][1][1]) / data.shape[1]) ** 2
+            )
+
+        if center_change < 0.05:
+            convergence = True
+        else:
+            centers = new_centers.copy()
+
+        iterationNo += 1
+        print('iterationNo = ', iterationNo, f'center change = {center_change}')
+
+    cluster_map *= 255 // k
+    return centers, cluster_map
+
+
+def task_3():
+    print("Task 3 (a) ...")
+    img = cv.imread('../images/flower.png', cv.IMREAD_GRAYSCALE)
+
+    for k in [2, 4, 6]:
+        centers, cluster_map = myKmeans_intensity(img, k)
+
+        print('centers:', centers)
+        display_image(f'clusters intensity, k = {k}', cluster_map.astype(np.uint8))
+
+    print("Task 3 (b) ...")
     img = cv.imread('../images/flower.png')
-    '''
-    ...
-    your code ...
-    ...
-    '''
+
+    for k in [2, 4, 6]:
+        centers, cluster_map = myKmeans_color(img, k)
+
+        print('centers:', centers)
+        display_image(f'clusters color, k = {k}', cluster_map.astype(np.uint8))
+
+    print("Task 3 (c) ...")
+    img = cv.imread('../images/flower.png', cv.IMREAD_GRAYSCALE)
+
+    for k in [2, 4, 6]:
+        centers, cluster_map = myKmeans_intensity_distance(img, k)
+
+        print('centers:', centers)
+        display_image(f'clusters intensity distance, k = {k}', cluster_map.astype(np.uint8))
 
 
 ##############################################
@@ -355,10 +442,9 @@ def task_4_a():
 ##############################################
 
 if __name__ == "__main__":
-    # task_1_a()
-    # task_1_b()
+    task_1_a()
+    task_1_b()
+
     # task_2()
-    task_3_a()
-    # task_3_b()
-    # task_3_c()
+    task_3()
     # task_4_a()
