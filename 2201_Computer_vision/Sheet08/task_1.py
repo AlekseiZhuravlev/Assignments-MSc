@@ -8,7 +8,10 @@ def read_training_data(path):
 
     processed_data = []
     for entry in data[1:]:
-        row = np.array(entry.split('\t')[:-1])
+        splitted = entry.split('\t')
+        if not splitted[-1]:
+            splitted = splitted[:-1]
+        row = np.array(splitted)
         processed_data.append(row.astype(int))
 
     processed_data = np.array(processed_data)
@@ -50,7 +53,7 @@ def pca(data, mean_hand):
 
     covariance = np.dot(data_centered, data_centered.transpose())
 
-    _, eigenvalues, eigenvectors = np.linalg.svd(covariance, full_matrices=True)
+    _, eigenvalues, eigenvectors = np.linalg.svd(covariance)
 
     combined = zip(eigenvalues, eigenvectors)
     combined = sorted(combined, key=lambda x: x[0], reverse=True)
@@ -72,9 +75,11 @@ def pca(data, mean_hand):
 
 
 if __name__ == '__main__':
+
+    # TASK 1
     data = read_training_data('data/task1/hands_aligned_train.txt')
     x_list, y_list = convert_training_data_to_xy(data)
-    visualize_hand(x_list[0], y_list[0], 'example_hand')
+    # visualize_hand(x_list[0], y_list[0], 'example_hand')
 
     mean_hand = calculate_mean_hand(data)
 
@@ -89,3 +94,38 @@ if __name__ == '__main__':
 
     x_list, y_list = convert_training_data_to_xy(np.array([hand]))
     visualize_hand(x_list[0], y_list[0], 'reconstructed_hand')
+
+    # TASK 2
+    data = read_training_data('data/task1/hands_aligned_test.txt')
+    y = data.flatten()
+
+    weights = np.zeros(5)
+    components = np.array([np.sqrt(eigenvalues[i]) * eigenvectors[i] for i in range(len(eigenvalues))])
+
+    for i in range(5):
+        x = mean_hand + np.sum(np.dot(weights, eigenvectors), axis=0)
+
+        rmse = np.sqrt(np.mean((y - x) ** 2))
+        print("RMSE", rmse)
+
+        x_list, y_list = convert_training_data_to_xy(np.array([x]))
+        x_joined = np.vstack([x_list, y_list])
+
+        x_list, y_list = convert_training_data_to_xy(np.array([y]))
+        y_joined = np.vstack([x_list, y_list]).T
+
+        A = np.vstack(
+            [x_joined, np.ones(len(x_joined[0]))]
+        ).T
+        sol = np.linalg.lstsq(A, y_joined, rcond=None)[0]
+
+        multiplier = sol[0:2, :].T
+        addition = sol[2, :]
+
+        multiplier_inv = np.linalg.inv(multiplier)
+
+        y_upd = np.dot(y_joined - addition, multiplier_inv).reshape(-1)
+
+        weights = np.dot(components, y_upd - mean_hand)
+
+        print(weights)
