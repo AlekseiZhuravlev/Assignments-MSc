@@ -114,6 +114,13 @@ def pca(data, mean_hand):
 
 def task1():
     # TASK 1
+
+    print("""
+
+    TASK 1
+
+    """)
+
     data = read_training_data('../data/task1/hands_aligned_train.txt')
     x_list, y_list = convert_training_data_to_xy(data)
     visualize_hand(x_list[0], y_list[0], 'example_hand')
@@ -137,6 +144,11 @@ def task1():
 
 # task2: performing inference on the test hand data using the trained shape model
 def task2(eigenvalues, eigenvectors, mean_hand):
+    print("""
+    
+    TASK 2
+    
+    """)
     # TASK 2
     # the code should be correct, but the eigenvectors are probably skewed...
 
@@ -148,6 +160,9 @@ def task2(eigenvalues, eigenvectors, mean_hand):
 
     for i in range(5):
         x = mean_hand + np.sum(np.dot(weights, eigenvectors), axis=0)
+
+        x_list, y_list = convert_training_data_to_xy(np.array([x]))
+        visualize_hand(x_list[0], y_list[0], f'reconstructed_hand_{i}')
 
         rmse = np.sqrt(np.mean((y - x) ** 2))
         print("RMSE", rmse)
@@ -227,6 +242,12 @@ def find_reconstruction_error(pca, img_list):
 
 
 def task3():
+    print("""
+
+    TASK 3
+
+    """)
+
     # fetch the dataset
     lfw_people = fetch_lfw_people(min_faces_per_person=70, resize=0.4)
     X = lfw_people.data
