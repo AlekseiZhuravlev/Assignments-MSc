@@ -79,7 +79,7 @@ if __name__ == '__main__':
     # TASK 1
     data = read_training_data('data/task1/hands_aligned_train.txt')
     x_list, y_list = convert_training_data_to_xy(data)
-    # visualize_hand(x_list[0], y_list[0], 'example_hand')
+    visualize_hand(x_list[0], y_list[0], 'example_hand')
 
     mean_hand = calculate_mean_hand(data)
 
@@ -96,6 +96,8 @@ if __name__ == '__main__':
     visualize_hand(x_list[0], y_list[0], 'reconstructed_hand')
 
     # TASK 2
+    # the code should be correct, but the eigenvectors are probably skewed...
+
     data = read_training_data('data/task1/hands_aligned_test.txt')
     y = data.flatten()
 
