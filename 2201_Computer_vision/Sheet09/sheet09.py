@@ -105,7 +105,6 @@ class OpticalFlow:
 
             # metric is set to 2 instead of 0.002 to speed up the computation
             if metric < 2:
-                print(n_iterations)
                 break
 
         flow_bgr = self.flow_map_to_bgr(flow)
@@ -134,7 +133,7 @@ class OpticalFlow:
         for i in range(self.prev.shape[0]):
             for j in range(self.prev.shape[1]):
                 aee_per_point[i, j] = (groundtruth_flow[i, j, 0] - estimated_flow[i, j, 0]) ** 2 + (
-                            groundtruth_flow[i, j, 1] - estimated_flow[i, j, 1]) ** 2
+                        groundtruth_flow[i, j, 1] - estimated_flow[i, j, 1]) ** 2
         aee = np.average(aee_per_point)
         return aee, aee_per_point
 
@@ -150,7 +149,6 @@ class OpticalFlow:
         hsv[..., 2] = cv.normalize(mag, None, 0, 255, cv.NORM_MINMAX)
         flow_bgr = cv.cvtColor(hsv.astype('uint8'), cv.COLOR_HSV2BGR)
 
-        print(hsv)
         return flow_bgr
 
 
