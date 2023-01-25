@@ -15,8 +15,8 @@ def extract_sift_keypoints(img):
     sift = cv.SIFT_create()
     kp, des = sift.detectAndCompute(img_grey, None)
 
-    img_keypoints = cv.drawKeypoints(img, kp, query_img)
-    # display_image('sift_keypoints', img_keypoints)
+    img_keypoints = cv.drawKeypoints(img_grey, kp, img)
+    display_image('sift_keypoints', img_keypoints)
 
     return kp, des
 
@@ -43,10 +43,13 @@ if __name__ == '__main__':
 
     # Draw first matches.
     img_matches = cv.drawMatches(
-        query_img, query_kp, train_img, train_kp, matches[:200],
+        query_img, query_kp, train_img, train_kp, matches[:300],
         None,
         flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
     )
+
+    plt.imshow(img_matches)
+    plt.show()
 
     # Projection matrix for query_img and train_img
     P_q = np.array([[1.0, 0, 0, 0],
@@ -58,35 +61,12 @@ if __name__ == '__main__':
                     [0, 0, 1.0, 0]])
 
     # Compute 3D points
-    print('Triangulation')
-
-    for i, match in enumerate(matches[:5]):
-        p0 = query_kp[match.queryIdx].pt
-        p1 = train_kp[match.trainIdx].pt
-
-        mat_0 = np.array([
-            [0, -1, p0[1]],
-            [1, 0, -p0[0]],
-            [-p0[1], p0[0], 0],
-        ])
-        mat_1 = np.array([
-            [0, -1, p1[1]],
-            [1, 0, -p1[0]],
-            [-p1[1], p1[0], 0]
-        ])
-
-        combined = np.concatenate([mat_0 @ P_q, mat_1 @ P_t])
-        solution = np.linalg.lstsq(combined[:, :-1], -combined[:, -1], rcond=None)[0]
-
-        print(
-            f"""
-            {i}) 2d points:
-            {p0}
-            {p1}
-            3d point:
-            {solution}"""
-        )
+    p_0 = np.array([query_kp[match.queryIdx].pt for match in matches])
+    p_1 = np.array([train_kp[match.trainIdx].pt for match in matches])
+    points_3d = cv.triangulatePoints(P_q, P_t, p_0.T, p_1.T)
 
     # Visualization
-    plt.imshow(img_matches)
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+    ax.scatter(points_3d[0], points_3d[1], points_3d[2])
     plt.show()
