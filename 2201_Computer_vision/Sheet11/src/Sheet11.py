@@ -95,6 +95,20 @@ def calculate_z(A, B):
     return D_inv @ y
 
 
+def homography_mapping(img, H):
+    warped_img = np.zeros_like(img)
+
+    for i in range(img.shape[0]):
+        for j in range(img.shape[1]):
+            homogenous_coordinates = [i, j, 1]
+            homography = (H @ homogenous_coordinates).A1
+            warped_img[
+                int(homography[0]),
+                int(homography[1])
+            ] = img[i, j]
+    return warped_img
+
+
 def question_q4(img1, img2, correspondences):
     corr1 = correspondences[:, :2]
     corr2 = correspondences[:, 2:]
@@ -140,26 +154,68 @@ def question_q4(img1, img2, correspondences):
     B_ = (fund_mat.T @ pc_pcT @ fund_mat)[:2, :2]
 
     z_1 = calculate_z(A, B)
-    z_2 = calculate_z(A_, B_)
-    z_solution = (z_1 / np.sqrt(sum(z_1 ** 2)) + z_2 / np.sqrt(sum(z_2 ** 2))) / 2
+    z_2 = calculate_z(A_, B_).A1
+
+    z_solution = np.add(z_1 / np.sqrt(sum(np.square(z_1))), z_2 / np.sqrt(sum(np.square(z_2)))) / 2
+    # print(type(z_1))
+    z_solution = np.pad(z_solution, (0, 1), 'constant')
+
+    w = ex_vecprod @ z_solution
+    w_ = (fund_mat @ z_solution).A1
+
+    # print(w_)
+    # projective transform matrices
+    H_p = np.matrix([
+        [1, 0, 0],
+        [0, 1, 0],
+        [w[0], w[1], 1]
+    ])
+    H_p_ = np.matrix([
+        [1, 0, 0],
+        [0, 1, 0],
+        [w_[0], w_[1], 1]
+    ])
+
+    # similarity transform matrices
+    # we assume that vc_ = 0
+    H_r = np.matrix([
+        [fund_mat[2, 1] - w[1] * fund_mat[2, 2], w[0] * fund_mat[2, 2] - fund_mat[2, 0], 0],
+        [fund_mat[2, 0] - w[0] * fund_mat[2, 2], fund_mat[2, 1] - w[1] * fund_mat[2, 2], fund_mat[2, 2]],
+        [0, 0, 1]
+    ])
+    H_r_ = np.matrix([
+        [fund_mat[1, 2] - w_[1] * fund_mat[2, 2], w_[0] * fund_mat[2, 2] - fund_mat[0, 2], 0],
+        [fund_mat[0, 2] - w_[0] * fund_mat[2, 2], fund_mat[1, 2] - w_[1] * fund_mat[2, 2], 0],
+        [0, 0, 1]
+    ])
 
     ## Apply Homography
+    warped_img1 = homography_mapping(img1, H_p)
+    warped_img2 = homography_mapping(img2, H_p_)
 
     print("Display Warped Images")
-    # cv2.imshow('Warped Image 1', im1), \
-    # cv2.imshow('Warped Image 2', im2), cv2.waitKey(0), cv2.destroyAllWindows()
+    cv2.imshow('Warped Image 1', warped_img1), \
+    cv2.imshow('Warped Image 2', warped_img2), cv2.waitKey(0), cv2.destroyAllWindows()
+
+    # cv2.imwrite("../images/apt_r1.png", warped_img1)
+    # cv2.imwrite("../images/apt_r2.png", warped_img2)
+    # fit, axs = plt.subplots(1, 2)
+    # axs[0].imshow(i1)
+    # axs[1].imshow(i2)
+    # plt.show()
+
     return
 
 
 def main():
     apt1 = cv2.imread('../images/apt1.jpg')
-    apt2 = cv2.imread('../images/apt1.jpg')
+    apt2 = cv2.imread('../images/apt2.jpg')
     aloe1 = cv2.imread('../images/aloe1.png')
     aloe2 = cv2.imread('../images/aloe2.png')
     correspondences = np.genfromtxt('../images/corresp.txt', dtype=float, skip_header=1)
 
     # question_q1_q2(apt1,apt2,correspondences)
-    # question_q3(aloe1,aloe2)
+    question_q3(aloe1, aloe2)
     question_q4(apt1, apt2, correspondences)
 
 
