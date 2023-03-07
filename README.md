@@ -4,7 +4,7 @@ Hello there!
 
 I'm Aleksei Zhuravlev, I began my Master's degree in Computer Science at the University of Bonn in Winter Semester 2022-2023. 
 
-Here I am collecting all the material that I have generated during the studies. Course related programming assignments, written tasks and lecture notes are organized in respective folders.
+Here I am collecting all the material that I have generated during my studies: course related programming assignments, written tasks and lecture notes are organized in respective folders.
 
 # Courses at the University of Bonn
 
