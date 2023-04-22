@@ -1,0 +1,2 @@
+python tools/vis_volume.py Results/02/coarse_mic.npz 0.001 --cam Results/02/cam_mic.npz
+python tools/vis_train.py Results/02/cam_mic.npz
