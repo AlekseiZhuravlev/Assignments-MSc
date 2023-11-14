@@ -105,4 +105,4 @@ if __name__ == '__main__':
         plt.scatter(points_2d[:, 0], points_2d[:, 1], facecolors='none', edgecolors='r')
 
         plt.draw()
-        plt.pause(0.01)
+        plt.pause(0.1)
