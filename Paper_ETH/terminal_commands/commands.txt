@@ -1,2 +1,103 @@
-python tools/vis_volume.py Results/02/coarse_mic.npz 0.001 --cam Results/02/cam_mic.npz
-python tools/vis_train.py Results/02/cam_mic.npz
+export DATASET_PATH=/itet-stor/azhuavlev/net_scratch/Projects/Data/HyperNerf/hand1-dense-v2/
+export EXPERIMENT_PATH=/itet-stor/azhuavlev/net_scratch/Projects/Results/HyperNerf/Exp_01/
+
+
+# train ho3d
+
+python train.py --base_folder /itet-stor/azhuavlev/net_scratch/Projects/Results/HyperNerf/Exp_17_ho3d_200/ --gin_bindings="data_dir='/itet-stor/azhuavlev/net_scratch/Projects/Data/HO3D_nerfies/02/'" --gin_configs configs/hypernerf_interp_ds_2d.gin
+
+python eval.py --base_folder /itet-stor/azhuavlev/net_scratch/Projects/Results/HyperNerf/Exp_15_ho3d/ --gin_bindings="data_dir='/itet-stor/azhuavlev/net_scratch/Projects/Data/HO3D_nerfies/02/'" --gin_configs /itet-stor/azhuavlev/net_scratch/Projects/Results/HyperNerf/Exp_15_ho3d/config.gin
+
+# train interhand
+
+python train.py --base_folder /itet-stor/azhuavlev/net_scratch/Projects/Results/HyperNerf/Exp_16_interhand_black/ --gin_bindings="data_dir='/itet-stor/azhuavlev/net_scratch/Projects/Data/InterHand_Nerfies_format/04/'" --gin_configs configs/hypernerf_interp_ap_2d.gin
+
+python eval.py --base_folder /itet-stor/azhuavlev/net_scratch/Projects/Results/HyperNerf/Exp_16_interhand/ --gin_bindings="data_dir='/itet-stor/azhuavlev/net_scratch/Projects/Data/InterHand_Nerfies_format/03/'" --gin_configs /itet-stor/azhuavlev/net_scratch/Projects/Results/HyperNerf/Exp_16_interhand/config.gin
+
+
+/itet-stor/azhuavlev/net_scratch/Projects/Results/HyperNerf/Exp_11_interhand/config.gin
+
+srun --time 160 --partition=gpu.debug --gres=gpu:1 --pty bash -i
+conda activate hypernerf-pytorch
+cd /home/azhuavlev/PycharmProjects/hypernerf/
+python render_images.py
+
+sbatch --output=/itet-stor/azhuavlev/net_scratch/Projects/Results/sbatch_log/%j.out /itet-stor/azhuavlev/net_scratch/Projects/Results/sbatch_train.sh
+squeue --user azhuavlev
+
+
+pip install -r requirements.txt --no-cache-dir
+pip cache purge
+conda env list
+
+scancel -u azhuavlev
+
+sbatch --output=/itet-stor/azhuavlev/net_scratch/Projects/Results/sbatch_log/%j.out /itet-stor/azhuavlev/net_scratch/Projects/Results/sbatch_jupyter.sh
+squeue --user azhuavlev
+
+
+python /home/azhuavlev/PycharmProjects/hypernerf/make_video.py
+
+colmap automatic_reconstructor --workspace_path /scratch/azhuavlev/InterHand_colmap/ --image_path /scratch/azhuavlev/InterHand_colmap/images/
+
+python train.py \
+   --dataset_name llff \
+   --root_dir /itet-stor/azhuavlev/net_scratch/Projects/Data/HyperNerf-pytorch/nerf_llff_data/fern/ \
+   --N_importance 64 --img_wh $IMG_W #IMG_H \
+   --num_epochs 30 --batch_size 1024 \
+   --optimizer adam --lr 5e-4 \
+   --lr_scheduler steplr --decay_step 10 20 --decay_gamma 0.5 \
+   --use_warp=True --slice_method "bendy_sheet"\
+   --exp_name exp
+
+
+EvalConfig.save_output = True
+EvalConfig.chunk = 2048
+EvalConfig.eval_once = True
+#EvalConfig.num_train_eval = 500
+eval_batch_size = 512
+
+
+conda activate pytcu11
+jupyter nbconvert *.ipynb
+
+conda create --name neuman_kaolin_fairnr --clone neuman_kaolin
+
+zip -r filename.zip folder
+
+#SBATCH  --gres=gpu:geforce_gtx_1080_ti:2
+
+grep --color=always --extended-regexp 'free|$' /home/sladmcvl/smon.txt
+
+
+export PYTHONPATH="${PYTHONPATH}:/home/azhuavlev/PycharmProjects/ml-neuman_mano"
+
+python /home/azhuavlev/PycharmProjects/ml-neuman/train.py --scene_dir /home/azhuavlev/Desktop/Data/neuman/data/seattle --name=lab_human --train_mode=smpl_and_offset --use_cuda=False
+
+python /home/azhuavlev/PycharmProjects/ml-neuman_mano/train.py --scene_dir /home/azhuavlev/Desktop/Data/InterHand_Neuman/01/ --name=interhand --train_mode=smpl_and_offset --normalize=False --use_cuda=True --block_grad=False --delay_iters=-1
+
+python /home/azhuavlev/PycharmProjects/ml-neuman_mano/render_360.py --scene_dir /home/azhuavlev/Desktop/Data/InterHand_Neuman/01/ --weights_path=/home/azhuavlev/Desktop/Results/neuman-mano/interhand/lightning_logs/version_300/checkpoints/epoch=204-step=131200.ckpt --mode canonical_360 --normalize=False --use_cuda=False
+
+geforce_rtx_2080_ti --nodelist=bmicgpu03
+
+salloc --nodes=1 --gres=gpu:1  --nodelist=bmicgpu01
+srun --pty bash
+conda activate MotionMixer
+
+python /home/azhuavlev/PycharmProjects/MotionMixerConv/optuna_search/conv_optuna_autoregressive.py
+
+jupyter notebook --no-browser --port 5998 --ip $(hostname -f)
+
+conda activate pytcu11
+tensorboard --logdir /home/azhuavlev/Desktop/Results/neuman_custom/lightning_logs/ --port 6005
+
+kill -9 -1
+
+conda install cuda -c nvidia
+
+# directory occupancy
+du -aBM -d 1 . | sort -nr | head -20
+
+Clusters:
+Slow - 10,
+Fast - 20, bmic01
